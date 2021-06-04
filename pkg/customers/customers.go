@@ -2,18 +2,21 @@ package customers
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log"
 	"time"
+
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v4"
 )
+
 // Errors
 var ErrNotFound = errors.New("item not found")
 var ErrInternal = errors.New("internal error")
 
 // Types
 type Service struct {
-	db	*sql.DB
+	pool	*pgxpool.Pool
 }
 type Customer struct {
 	ID			int64			`json:"id"`
@@ -23,20 +26,20 @@ type Customer struct {
 	Created	time.Time	`json:"created"`
 }
 // Constructor of service
-func NewService(db *sql.DB) *Service {
-	return &Service{db: db}
+func NewService(pool	*pgxpool.Pool) *Service {
+	return &Service{pool: pool}
 }
 
 // Get customers By Id
 func (s *Service) ByID(ctx context.Context, id int64) (*Customer, error) {
 	item := &Customer{}
 
-	err := s.db.QueryRowContext(ctx, `
+	err := s.pool.QueryRow(ctx, `
 		SELECT id, name, phone, active, created 
 			FROM customers WHERE id = $1
 	`, id).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
 
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
@@ -49,21 +52,15 @@ func (s *Service) ByID(ctx context.Context, id int64) (*Customer, error) {
 func (s *Service) All(ctx context.Context) ([]*Customer, error) {
 	customers := []*Customer{}
 	
-	rows, err := s.db.QueryContext(ctx, `SELECT * FROM customers`)
-	if errors.Is(err, sql.ErrNoRows) {
+	rows, err := s.pool.Query(ctx, `SELECT * FROM customers`)
+	defer rows.Close()
+
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, ErrInternal
 	}
-	
-	defer func() {
-		if cerr := rows.Close(); cerr != nil {
-			if err == nil {
-				err = cerr
-			}
-		}
-	}()
 
 	for rows.Next() {
 		item := &Customer{}
@@ -79,20 +76,15 @@ func (s *Service) All(ctx context.Context) ([]*Customer, error) {
 func (s *Service) AllActive(ctx context.Context) ([]*Customer, error) {
 	customers := []*Customer{}
 
-	rows, err := s.db.QueryContext(ctx, `SELECT * FROM customers WHERE active = true`)
-	if errors.Is(err, sql.ErrNoRows) {
+	rows, err := s.pool.Query(ctx, `SELECT * FROM customers WHERE active = true`)
+	defer rows.Close()
+
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, ErrInternal
 	}
-	defer func() {
-		if cerr := rows.Close(); cerr != nil {
-			if err == nil {
-				err = cerr
-			}
-		}
-	}()
 
 	for rows.Next() {
 		item := &Customer{}
@@ -109,15 +101,15 @@ func (s *Service) Save(ctx context.Context, customer *Customer) (c *Customer, er
 	item := &Customer{}
 
 	if customer.ID == 0 {
-		err = s.db.QueryRowContext(ctx,
+		err = s.pool.QueryRow(ctx,
 			`INSERT INTO customers(name, phone) 
 				VALUES($1, $2) RETURNING *`, customer.Name, customer.Phone).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
 	} else {
-		err = s.db.QueryRowContext(ctx, 
+		err = s.pool.QueryRow(ctx, 
 			`UPDATE customers SET name = $1, phone = $2
 				 WHERE id = $3 RETURNING *`, customer.Name, customer.Phone, customer.ID).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
 	}
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
@@ -129,10 +121,10 @@ func (s *Service) Save(ctx context.Context, customer *Customer) (c *Customer, er
 func (s *Service) RemoveByID(ctx context.Context, id int64) (*Customer, error) {
 	item := &Customer{}
 
-	err := s.db.QueryRowContext(ctx, 
+	err := s.pool.QueryRow(ctx, 
 		`DELETE FROM customers
 			WHERE id = $1 RETURNING *`, id).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound
 	}
 	if err != nil {
@@ -145,11 +137,11 @@ func (s *Service) RemoveByID(ctx context.Context, id int64) (*Customer, error) {
 func (s *Service) BlockAndUnblockByID(ctx context.Context, id int64, active bool) (*Customer, error) {
 	item := &Customer{}
 
-	err := s.db.QueryRowContext(ctx, 
+	err := s.pool.QueryRow(ctx, 
 		`UPDATE customers SET active = $1 
 			WHERE id = $2 RETURNING *`, active, id).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
 
-	if err == sql.ErrNoRows {
+	if err == pgx.ErrNoRows {
 		return nil, ErrNotFound
 	}
 	if err != nil {
