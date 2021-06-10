@@ -62,6 +62,8 @@ func (s *Service) All(ctx context.Context) ([]*Customer, error) {
 		return nil, ErrInternal
 	}
 
+	defer rows.Close()
+
 	for rows.Next() {
 		item := &Customer{}
 		err := rows.Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
@@ -97,26 +99,40 @@ func (s *Service) AllActive(ctx context.Context) ([]*Customer, error) {
 	return customers, nil
 }
 // Save customers By id
-func (s *Service) Save(ctx context.Context, customer *Customer) (c *Customer, err error) {
+func (s *Service) Save(ctx context.Context, customer *Customer) (*Customer, error) {
 	item := &Customer{}
-
+	
 	if customer.ID == 0 {
-		err = s.pool.QueryRow(ctx,
-			`INSERT INTO customers(name, phone) 
-				VALUES($1, $2) RETURNING *`, customer.Name, customer.Phone).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
-	} else {
-		err = s.pool.QueryRow(ctx, 
-			`UPDATE customers SET name = $1, phone = $2
-				 WHERE id = $3 RETURNING *`, customer.Name, customer.Phone, customer.ID).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
+		err := s.pool.QueryRow(ctx, `
+		INSERT INTO customers(name, phone) VALUES($1, $2) RETURNING id, name, phone, active, created
+		`, customer.Name, customer.Phone).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Print("No rows")
+			return nil, ErrNotFound
+		}
+		if err != nil {
+			log.Print(err)
+			return nil, ErrInternal
+		}
 	}
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil, ErrNotFound
+	
+	if customer.ID != 0 {
+		err := s.pool.QueryRow(ctx, `
+		UPDATE customers SET name = $2, phone = $3 WHERE id = $1 RETURNING id, name, phone, active, created
+		`, customer.ID, customer.Name, customer.Phone).Scan(&item.ID, &item.Name, &item.Phone, &item.Active, &item.Created)
+		
+		if errors.Is(err, pgx.ErrNoRows) {
+			log.Print("No rows")
+			return nil, ErrNotFound
+		}
+		if err != nil {
+			log.Print(err)
+			return nil, ErrInternal
+		}
 	}
-	if err != nil {
-		return nil, ErrInternal
-	}
-	return item, nil
-} 	
+
+	return item, nil	
+}
 // Delete customer by id
 func (s *Service) RemoveByID(ctx context.Context, id int64) (*Customer, error) {
 	item := &Customer{}
