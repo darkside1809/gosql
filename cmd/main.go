@@ -11,6 +11,7 @@ import (
 	"github.com/darkside1809/gosql/cmd/app"
 	"github.com/darkside1809/gosql/pkg/customers"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/gorilla/mux"
 	"go.uber.org/dig"
 )
 
@@ -26,22 +27,19 @@ func main() {
 	}
 }
 
-func execute(host string, port string, dsn string) (err error) {
-	deps := []interface{} {
+func execute(server, port, dsn string) (err error) {
+	deps := []interface{}{
 		app.NewServer,
-		http.NewServeMux,
-		func() (*pgxpool.Pool, error) {
-			ctx, _ := context.WithTimeout(context.Background(), time.Second * 5)
-			return pgxpool.Connect(ctx, dsn)
-		},
+		mux.NewRouter,
 		customers.NewService,
-		// managers.NewService,
-		// products.NewService,
-		// sales.NewService,
-		func(server *app.Server) *http.Server{
-			return &http.Server {
-				Addr: net.JoinHostPort(host, port),
-				Handler: server,
+		func() (*pgxpool.Pool, error) {
+			connCtx, _ := context.WithTimeout(context.Background(), time.Second * 5)
+			return pgxpool.Connect(connCtx, dsn)
+		},
+		func(serverHandler *app.Server) *http.Server {
+			return &http.Server{
+				Addr:    net.JoinHostPort(server, port),
+				Handler: serverHandler,
 			}
 		},
 	}
@@ -54,13 +52,14 @@ func execute(host string, port string, dsn string) (err error) {
 		}
 	}
 
-	err = container.Invoke(func(server *app.Server) {
-		server.Init()
+	err = container.Invoke(func(server *app.Server) { 
+		server.Init() 
 	})
 	if err != nil {
 		return err
 	}
-	return container.Invoke(func(server *http.Server) error {
-		return server.ListenAndServe()
+
+	return container.Invoke(func(s *http.Server) error { 
+		return s.ListenAndServe() 
 	})
 }
