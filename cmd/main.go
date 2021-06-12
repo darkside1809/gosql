@@ -10,8 +10,9 @@ import (
 
 	"github.com/darkside1809/gosql/cmd/app"
 	"github.com/darkside1809/gosql/pkg/customers"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/darkside1809/gosql/pkg/security"
 	"github.com/gorilla/mux"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/dig"
 )
 
@@ -27,19 +28,20 @@ func main() {
 	}
 }
 
-func execute(server, port, dsn string) (err error) {
+func execute(host, port, dsn string) (err error) {
 	deps := []interface{}{
 		app.NewServer,
 		mux.NewRouter,
-		customers.NewService,
 		func() (*pgxpool.Pool, error) {
 			connCtx, _ := context.WithTimeout(context.Background(), time.Second * 5)
 			return pgxpool.Connect(connCtx, dsn)
 		},
-		func(serverHandler *app.Server) *http.Server {
+		customers.NewService,
+		security.NewService,
+		func(server *app.Server) *http.Server {
 			return &http.Server{
-				Addr:    net.JoinHostPort(server, port),
-				Handler: serverHandler,
+				Addr:    net.JoinHostPort(host, port),
+				Handler: server,
 			}
 		},
 	}
