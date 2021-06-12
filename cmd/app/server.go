@@ -1,18 +1,21 @@
 package app
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
-	"encoding/json"
 
+	"github.com/darkside1809/gosql/cmd/app/middleware"
 	"github.com/darkside1809/gosql/pkg/customers"
+	"github.com/darkside1809/gosql/pkg/security"
 	"github.com/gorilla/mux"
 )
 
 type Server struct {
 	mux				*mux.Router
 	customersSvc	*customers.Service
+	securitySvc 	*security.Service
 }
 
 const (
@@ -21,15 +24,15 @@ const (
 	DELETE = "DELETE"
 )
 
-func NewServer(mux *mux.Router, customersSvc	*customers.Service) *Server {
-	return &Server{mux: mux, customersSvc: customersSvc}
+func NewServer(mux *mux.Router, customersSvc	*customers.Service, securitySvc *security.Service) *Server {
+	return &Server{mux: mux, customersSvc: customersSvc, securitySvc: securitySvc}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.mux.ServeHTTP(w, r)
 }
 
-
+// Init initialize server and register all handlers
 func (s *Server) Init() {
 	//s.mux.HandleFunc("/customers.getById", 		s.handleGetCustomerByID)		//GetById
 	//s.mux.HandleFunc("/customers.getAll",			s.handleGetAllCustomers)		//GetAll
@@ -38,6 +41,9 @@ func (s *Server) Init() {
 	//s.mux.HandleFunc("/customers.getAllActive", 	s.handleGetAllActiveCustomers)//GetAllActive
 	//s.mux.HandleFunc("/customers.blockById", 		s.handleblockCustomerByID)		//blockById
 	//s.mux.HandleFunc("/customers.unblockById", 	s.handleUnblockCustomerByID)	//unblockById
+
+	s.mux.Use(middleware.Basic(s.securitySvc.Auth))
+	s.mux.Use(middleware.Logger)
 
 	s.mux.HandleFunc("/customers", 			s.handleGetAllCustomers).Methods(GET)
 	s.mux.HandleFunc("/customers/active", 	s.handleGetAllActiveCustomers).Methods(GET)
