@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	//"crypto/md5"
+	//"crypto/rand"
+	// "encoding/hex"
 	"log"
 	"net"
 	"net/http"
@@ -14,6 +17,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/dig"
+	// "golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -26,6 +30,19 @@ func main() {
 		log.Print(err)
 		os.Exit(1)
 	}
+
+	// password := "kuroky1809"
+	// hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	// if err != nil {
+	// 	log.Print(err)
+	// 	os.Exit(1)
+	// }
+	// log.Print(hex.EncodeToString(hash))
+	// err = bcrypt.CompareHashAndPassword(hash, []byte(password))
+	// if err != nil {
+	// 	log.Print("password is invalid")
+	// 	os.Exit(1)
+	// }
 }
 
 func execute(host, port, dsn string) (err error) {
@@ -65,3 +82,4 @@ func execute(host, port, dsn string) (err error) {
 		return s.ListenAndServe() 
 	})
 }
+

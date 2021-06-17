@@ -1,5 +1,0 @@
-
-
-//GET http://localhost:9999/customers.getAll HTTP/1.1
-
-GET http://localhost:9999/customers/3
