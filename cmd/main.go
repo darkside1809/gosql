@@ -2,6 +2,9 @@ package main
 
 import (
 	"context"
+	//"crypto/md5"
+	//"crypto/rand"
+	// "encoding/hex"
 	"log"
 	"net"
 	"net/http"
@@ -10,16 +13,17 @@ import (
 
 	"github.com/darkside1809/gosql/cmd/app"
 	"github.com/darkside1809/gosql/pkg/customers"
+	"github.com/darkside1809/gosql/pkg/managers"
 	"github.com/darkside1809/gosql/pkg/security"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.uber.org/dig"
+	// "golang.org/x/crypto/bcrypt"
 )
 
 func main() {
 	host := "0.0.0.0"
 	port := "9999"
-
 	dsn := "postgres://app:pass@localhost:5432/db"
 
 	if err := execute(host, port, dsn); err != nil {
@@ -38,6 +42,7 @@ func execute(host, port, dsn string) (err error) {
 		},
 		customers.NewService,
 		security.NewService,
+		managers.NewService,
 		func(server *app.Server) *http.Server {
 			return &http.Server{
 				Addr:    net.JoinHostPort(host, port),
@@ -65,3 +70,4 @@ func execute(host, port, dsn string) (err error) {
 		return s.ListenAndServe() 
 	})
 }
+

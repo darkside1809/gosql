@@ -1,0 +1,10 @@
+version: '3.7'
+services:
+  bankdb:
+    image: postgres:10
+    ports:
+      - 5432:5432
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=pass
+      - POSTGRES_DB=db

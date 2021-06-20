@@ -3,7 +3,6 @@ package middleware
 import (
 	"log"
 	"net/http"
-
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -21,7 +20,7 @@ func Basic(auth func(login, pass string) bool) func(handler http.Handler) http.H
 		return http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 			username, password, ok := request.BasicAuth()
 			if !ok {
-				log.Print("Cant parse username and password")
+				log.Print("Cant parse username or password")
 				http.Error(writer, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}

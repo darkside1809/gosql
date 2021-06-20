@@ -2,4 +2,6 @@
 
 //GET http://localhost:9999/customers.getAll HTTP/1.1
 
-GET http://localhost:9999/customers/3
+GET  http://localhost:9999/api/customers HTTP/1.1
+Authorization: Basic admin 123
+
