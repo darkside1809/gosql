@@ -13,6 +13,7 @@ import (
 
 	"github.com/darkside1809/gosql/cmd/app"
 	"github.com/darkside1809/gosql/pkg/customers"
+	"github.com/darkside1809/gosql/pkg/managers"
 	"github.com/darkside1809/gosql/pkg/security"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -23,26 +24,12 @@ import (
 func main() {
 	host := "0.0.0.0"
 	port := "9999"
-
 	dsn := "postgres://app:pass@localhost:5432/db"
 
 	if err := execute(host, port, dsn); err != nil {
 		log.Print(err)
 		os.Exit(1)
 	}
-
-	// password := "kuroky1809"
-	// hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	// if err != nil {
-	// 	log.Print(err)
-	// 	os.Exit(1)
-	// }
-	// log.Print(hex.EncodeToString(hash))
-	// err = bcrypt.CompareHashAndPassword(hash, []byte(password))
-	// if err != nil {
-	// 	log.Print("password is invalid")
-	// 	os.Exit(1)
-	// }
 }
 
 func execute(host, port, dsn string) (err error) {
@@ -55,6 +42,7 @@ func execute(host, port, dsn string) (err error) {
 		},
 		customers.NewService,
 		security.NewService,
+		managers.NewService,
 		func(server *app.Server) *http.Server {
 			return &http.Server{
 				Addr:    net.JoinHostPort(host, port),
