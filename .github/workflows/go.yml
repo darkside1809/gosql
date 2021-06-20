@@ -20,7 +20,7 @@ jobs:
         id: go
 
       - name: Set up GOPRIVATE
-        run: go env -w GOPRIVATE=github.com/Habibullo-1999
+        run: go env -w GOPRIVATE=github.com/darkside1809
 
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
